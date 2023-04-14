@@ -15,13 +15,9 @@ import {
   GM_setValue
 } from '$';
 import CurseForgeConfig from './config/CurseForgeConfig';
-import {
-  // GameVersion,
-  GameVersionType,
-  GameVersionsByType
-} from './curseforge/GameVersionType';
 import SemVer from './utils/SemVer';
 import CfhModItem from './components/ModItem.vue';
+import {useVersionStore, GameVersionTypeInfo} from './stores/versions';
 
 const modsSearchSortFieldLabels = new Map<ModsSearchSortField, string>([
   [ModsSearchSortField.Featured, "特性 (Featured)"],
@@ -41,12 +37,6 @@ for (let key in ModLoaderType) {
   if (!isNaN(num)) {
     modLoaderLabels.set(num, ModLoaderType[key]);
   }
-}
-
-interface GameVersionTypeInfo {
-  id: number;
-  name: string;
-  versions: string[];
 }
 
 const SortOrderAsc = "asc";
@@ -116,10 +106,10 @@ let modLoaderType = computed({
     if (conditions.modLoaderType != undefined) {
       let num = conditions.modLoaderType;
       if (num >= 0 && num <= 5) {
-        return modLoaderLabels.get(conditions.modLoaderType)
+        return modLoaderLabels.get(conditions.modLoaderType);
       }
     }
-    return ''
+    return '';
   },
   set(value) {
     console.info("设置modLoaderType: ", value);
