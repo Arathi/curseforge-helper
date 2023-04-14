@@ -2,7 +2,7 @@
 </script>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, provide } from 'vue';
 import Category from './curseforge/Category';
 import Mod from './curseforge/Mod';
 import CurseForgeApi, { 
@@ -57,6 +57,7 @@ const sortOrders = {
 };
 
 let cfApi: CurseForgeApi = new CurseForgeApi("");
+provide("curseforgeApi", cfApi);
 
 // #region data
 let keywords = ref("");
@@ -530,7 +531,7 @@ onMounted(() => {
   <div>
     <ul>
       <div v-for="mod in results" :key=mod.id>
-        <cfh-mod-item :mod="mod" />
+        <cfh-mod-item :mod=(mod) :conditions=(conditions) />
       </div>
     </ul>
   </div>

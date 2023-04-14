@@ -1,24 +1,34 @@
 <script setup lang="ts">
-import { defineProps, PropType, computed, onMounted } from 'vue';
+import { defineProps, PropType, computed, onMounted, ref, inject } from 'vue';
+import { File as ModFile } from '../curseforge/Mod';
+import CurseForgeApi, { SearchModsConditions as Conditions } from '../curseforge/CurseForgeApi';
 import DateTime from './DateTime.vue';
 
 import Mod from '../curseforge/Mod';
 
 // #region props
-const props = defineProps({
-  mod: Object as PropType<Mod>,
-});
+const props = defineProps<{
+  mod: Mod,
+  conditions: Conditions
+}>();
 // #endregion
 
+// #region data
+const selectedFileId = ref(0);
+const modFiles = ref<ModFile[]>([]);
+// #endregion
+
+const cfApi: CurseForgeApi = inject<CurseForgeApi>("curseforgeApi")!;
+
 const mainAuthor = computed(() => {
-  let authors = props.mod?.authors;
+  let authors = props.mod.authors;
   if (authors != undefined && authors.length > 0) {
     return authors[0];
   }
 });
 
 const downloadCount = computed(() => {
-  let amount = props.mod?.downloadCount
+  let amount = props.mod.downloadCount
   if (amount != undefined) {
     if (amount >= 100000000) {
       return `${(amount / 100000000).toFixed(2)} 亿`
@@ -31,8 +41,72 @@ const downloadCount = computed(() => {
   return "0"
 });
 
+const selectedFile = computed(() => {
+  for (let file of modFiles.value) {
+    if (file.id == selectedFileId.value) {
+      return file;
+    }
+  }
+  return null;
+});
+
+const selectedFileName = computed({
+  get() {
+    let file = selectedFile.value;
+    if (file != null) {
+      return file.displayName;
+    }
+    return '';
+  },
+  set(value) {
+    console.info(`选择文件：`, value);
+    let num = Number(value);
+    if (!isNaN(num)) {
+      selectedFileId.value = num;
+    }
+    else {
+      selectedFileId.value = 0;
+    }
+  }
+});
+
+const downloadUrl = computed(() => {
+  let file = selectedFile.value;
+  if (file != null) {
+    return file.downloadUrl;
+  }
+  return `${props.mod.links.websiteUrl}/download`
+});
+
+const modFilesOptions = computed(() => {
+  if (modFiles.value.length == 0) {
+    return props.mod.latestFiles;
+  }
+  return modFiles.value;
+});
+
 onMounted(() => {
-  
+  let { mod, conditions } = props;
+  console.info(`MOD搜索结果（#${mod.id} @${mod.slug} ${mod.name}）挂载完成`);
+
+  console.info("Mod文件搜索条件：", {
+    gameVersion: conditions.gameVersion, 
+    modLoaderType: conditions.modLoaderType, 
+    gameVersionTypeId: conditions.gameVersionTypeId
+  });
+
+  cfApi.getFilesByModId(
+    mod.id, 
+    conditions.gameVersion, 
+    conditions.modLoaderType, 
+    conditions.gameVersionTypeId
+  ).then((files) => {
+    console.info("Mod文件搜索结果如下：");
+    files.map((file) => {
+      console.info(file);
+      modFiles.value.push(file);
+    });
+  });
 });
 </script>
 
@@ -43,8 +117,8 @@ onMounted(() => {
         <!-- 图标 -->
         <div class="relative mr-2 lg:mr-0">
           <div class="project-avatar project-avatar-64">
-            <a :href=(mod?.links.websiteUrl) class="bg-white">
-              <img :src=(mod?.logo.url) alt="" class="mx-auto">
+            <a :href=(mod.links.websiteUrl) class="bg-white">
+              <img :src=(mod.logo.url) alt="" class="mx-auto">
             </a>
           </div>
         </div>
@@ -52,8 +126,8 @@ onMounted(() => {
 
         <!-- 名称 by 作者 （小） -->
         <div class="flex items-end lg:hidden">
-          <a :href=(mod?.links.websiteUrl)>
-            <h3 class="font-bold text-lg hover:no-underline">{{ mod?.name }}</h3>
+          <a :href=(mod.links.websiteUrl)>
+            <h3 class="font-bold text-lg hover:no-underline">{{ mod.name }}</h3>
           </a>
           &nbsp;
           <span>By</span>
@@ -65,8 +139,8 @@ onMounted(() => {
       <div class="flex flex-col">
         <!-- 名称 by 作者 （大） -->
         <div class="lg:flex items-end hidden">
-          <a class="my-auto" :href=(mod?.links.websiteUrl)>
-            <h3 class="font-bold text-lg">{{ mod?.name }}</h3>
+          <a class="my-auto" :href=(mod.links.websiteUrl)>
+            <h3 class="font-bold text-lg">{{ mod.name }}</h3>
           </a>
           <span class="my-auto">
             &nbsp;by&nbsp;
@@ -74,11 +148,11 @@ onMounted(() => {
           <a class="text-base leading-normal font-bold hover:no-underline my-auto" :href=(mainAuthor?.url)>{{ mainAuthor?.name }}</a>
           <span class="my-auto">
             &nbsp;&nbsp;&nbsp;&nbsp;
-            #{{ mod?.id }}
+            #{{ mod.id }}
           </span>
           <span class="my-auto">
             &nbsp;&nbsp;&nbsp;&nbsp;
-            @{{ mod?.slug }}
+            @{{ mod.slug }}
           </span>
         </div>
         <!-- /名称 by 作者 （大） -->
@@ -86,47 +160,54 @@ onMounted(() => {
         <!-- 简介 -->
         <div class="flex my-1">
           <span class="mr-2 text-xs text-gray-500">下载次数：{{ downloadCount }}</span>
-          <span class="mr-2 text-xs text-gray-500">更新时间：<date-time :date=(mod?.dateModified!) /></span>
-          <span class="text-xs text-gray-500">创建时间：<date-time :date=(mod?.dateCreated!) /></span>
+          <span class="mr-2 text-xs text-gray-500">更新时间：<date-time :date=(mod.dateModified!) /></span>
+          <span class="text-xs text-gray-500">创建时间：<date-time :date=(mod.dateCreated!) /></span>
         </div>
         <p class="text-sm leading-snug">
-          {{ mod?.summary }}
+          {{ mod.summary }}
         </p>
         <!-- /简介 -->
       </div>
       <div class="w-full lg:w-unset justify-between lg:min-w-40 ml-auto flex flex-row-reverse lg:flex-col items-end">
         <!-- 按钮 -->
         <div class="flex mb-2 -mx-1">
+          <!-- 下载文件选择器 -->
+          <el-select 
+            v-model="selectedFileName" 
+            clearable
+            placeholder="请选择文件"
+          >
+            <el-option 
+              v-for="file in modFiles"
+              :value=(file.id)
+            >
+              <span style="float: left;">{{ file.displayName }}</span>
+              <span style="float: right; color: var(--el-text-color-secondary); margin-left: 15px;">{{ file.id }}</span>
+            </el-option>
+          </el-select>
+          <!-- /下载文件选择器 -->
+
           <!-- 下载按钮 -->
           <div class="px-1">
-            <a data-project-id="248787" href="/minecraft/mc-mods/appleskin/download" class="button button--hollow"
+            <a data-project-id="248787" :href=(downloadUrl) class="button button--hollow"
               data-tooltip="Download file">
-              <span class="button__text"><svg class="icon icon-margin" viewBox="0 0 20 20" width="18" height="18">
+              <span class="button__text">
+                <svg class="icon icon-margin" viewBox="0 0 20 20" width="18" height="18">
                   <use
                     xlink:href="/Content/2-0-8501-12076/Skins/CurseForge/images/twitch/Action/Download.svg#Action/Download">
                   </use>
                 </svg>
-                下载</span>
+                下载
+              </span>
             </a>
           </div>
-
-          <!-- 安装按钮 -->
-          <div class="px-1">
-            <a data-project-id="248787" href="/minecraft/mc-mods/appleskin/download?client=y" class="button"
-              style="background-color: #F16436" data-tooltip="Install with CurseForge app">
-              <figure class="icon icon-margin relative w-5 h-4">
-                <img src="/Content/2-0-8501-12076/Skins/CurseForge/images/anvil.svg" alt="CurseForge"
-                  class="w-full h-full absolute">
-              </figure>
-              安装
-            </a>
-          </div>
+          <!-- /下载按钮 -->
         </div>
         <!-- /按钮 -->
 
         <!-- 分类 -->
         <div class="flex -mx-1">
-          <div class="px-1" v-for="category in mod?.categories">
+          <div class="px-1" v-for="category in mod.categories">
             <a :href=(category.url)>
               <figure class="relative h-6 w-6" :title=(category.name)>
                 <img :src=(category.iconUrl)

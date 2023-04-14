@@ -22,7 +22,7 @@ interface ModAsset {
     url: string;
 }
 
-interface File {
+export interface File {
     id: number;
     gameId: number;
     modId: number;

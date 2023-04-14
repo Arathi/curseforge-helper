@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 
 import Category from './Category';
-import Mod from './Mod';
+import Mod, { File } from './Mod';
 import {
     GameVersionType,
     GameVersionsByType
@@ -219,6 +219,37 @@ export default class CurseForgeApi {
                 }
             }
             return null;
+        });
+    }
+
+    getFilesByModId(
+        modId: number, 
+        gameVersion?: string, 
+        modLoaderType?: ModLoaderType, 
+        gameVersionTypeId?: number
+    ) : Promise<File[]> {
+        let empty: File[] = [];
+        let uri = `/v1/mods/${modId}/files`;
+        let params: any = {
+            gameVersion: gameVersion,
+            modLoaderType: modLoaderType,
+            gameVersionTypeId: gameVersionTypeId
+        };
+
+        return this.httpClient.get(uri, {
+            params: params
+        }).then((resp) => {
+            if (resp.status == 200) {
+                try {
+                    let respMsg = resp.data;
+                    let data = respMsg.data as File[]
+                    return data;
+                }
+                catch (ex) {
+                    console.warn(`${uri} 响应报文转换失败：`, ex);
+                }
+            }
+            return empty;
         });
     }
 }
