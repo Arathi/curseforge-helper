@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, PropType, computed } from 'vue';
+import { defineProps, computed } from 'vue';
 import moment from 'moment';
 
 let props = defineProps<{
@@ -18,7 +18,7 @@ const date = computed(() => {
 </script>
 
 <template>
-  <abbr class="tip standard-date standard-datetime" :data-epoch=(timestamp) time-processed="true">{{ date }}</abbr>
+  <abbr class="tip standard-date standard-datetime" :data-epoch=(timestamp)>{{ date }}</abbr>
 </template>
 
 <style scoped></style>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { defineProps, PropType, computed, onMounted, ref, inject } from 'vue';
+import { defineProps, computed, onMounted, ref, inject } from 'vue';
 import { File as ModFile } from '../curseforge/Mod';
 import CurseForgeApi, { SearchModsConditions as Conditions } from '../curseforge/CurseForgeApi';
 import DateTime from './DateTime.vue';
-
 import Mod from '../curseforge/Mod';
+
+const cfApi: CurseForgeApi = inject<CurseForgeApi>("curseforgeApi")!;
 
 // #region props
 const props = defineProps<{
@@ -18,8 +19,7 @@ const selectedFileId = ref(0);
 const modFiles = ref<ModFile[]>([]);
 // #endregion
 
-const cfApi: CurseForgeApi = inject<CurseForgeApi>("curseforgeApi")!;
-
+// #region computed
 const mainAuthor = computed(() => {
   let authors = props.mod.authors;
   if (authors != undefined && authors.length > 0) {
@@ -78,13 +78,30 @@ const downloadUrl = computed(() => {
   return `${props.mod.links.websiteUrl}/download`
 });
 
-const modFilesOptions = computed(() => {
-  if (modFiles.value.length == 0) {
-    return props.mod.latestFiles;
+const _star = ref(false);
+
+const star = computed({
+  get() {
+    return _star;
+  },
+  set(value) {
   }
-  return modFiles.value;
 });
 
+function starToggle() {
+  console.info(`切换${props.mod.id}的star状态`);
+  _star.value = !_star.value;
+}
+
+const collected = computed(() => {
+  if (_star.value) {
+    return "collect";
+  }
+  return "";
+});
+// #endregion
+
+// #region mounted
 onMounted(() => {
   let { mod, conditions } = props;
   console.info(`MOD搜索结果（#${mod.id} @${mod.slug} ${mod.name}）挂载完成`);
@@ -108,11 +125,12 @@ onMounted(() => {
     });
   });
 });
+// #endregion
 </script>
 
 <template>
   <div class="my-2">
-    <div class="project-listing-row box py-3 px-4 flex flex-col lg:flex-row lg:items-center">
+    <div class="project-listing-row box py-3 px-4 flex flex-col lg:flex-row lg:items-center" :class="collected">
       <div class="lg:mr-2 flex items-center mb-2 lg:mb-0">
         <!-- 图标 -->
         <div class="relative mr-2 lg:mr-0">
@@ -146,7 +164,7 @@ onMounted(() => {
             &nbsp;by&nbsp;
           </span>
           <a class="text-base leading-normal font-bold hover:no-underline my-auto" :href=(mainAuthor?.url)>{{ mainAuthor?.name }}</a>
-          <span class="my-auto">
+          <span class="my-auto" @click="starToggle">
             &nbsp;&nbsp;&nbsp;&nbsp;
             #{{ mod.id }}
           </span>
@@ -222,4 +240,8 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.collect {
+  background: linear-gradient(90deg, pink, transparent);
+}
+</style>

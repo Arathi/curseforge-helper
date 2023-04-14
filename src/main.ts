@@ -37,10 +37,5 @@ main.insertBefore(container, containerOrigin);
 
 // mount
 app.mount(
-  // (() => {
-  //   const appNode = document.createElement('div');
-  //   document.body.append(appNode);
-  //   return appNode;
-  // })(),
   container
 );

@@ -493,7 +493,7 @@ onMounted(() => {
           :value="field[0]"
         >
           <span style="float: left;">{{ field[1] }}</span>
-          <span style="float: right; color: var(--el-text-color-secondary);">{{ field[0] }}</span>
+          <span style="float: right; color: var(--el-text-color-secondary); margin-left: 15px;">{{ field[0] }}</span>
         </el-option>
       </el-select>
       <el-select 
