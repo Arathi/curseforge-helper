@@ -46,7 +46,7 @@ export type SortOrder = [
 ];
 
 export enum ModLoaderType {
-    Any,
+    Any = 0,
     Forge,
     Cauldron,
     LiteLoader,
@@ -202,6 +202,23 @@ export default class CurseForgeApi {
                 }
             }
             return empty;
+        });
+    }
+
+    getModById(modId: number) : Promise<Mod | null> {
+        let uri = `/v1/mods/${modId}`;
+        return this.httpClient.get(uri).then((resp) => {
+            if (resp.status == 200) {
+                try {
+                    let respMsg = resp.data;
+                    let data = respMsg.data as Mod
+                    return data;
+                }
+                catch (ex) {
+                    console.warn(`${uri} 响应报文转换失败：`, ex);
+                }
+            }
+            return null;
         });
     }
 }

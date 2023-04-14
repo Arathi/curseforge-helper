@@ -1,10 +1,14 @@
+<script lang="ts">
+</script>
+
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, version } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import Category from './curseforge/Category';
 import Mod from './curseforge/Mod';
 import CurseForgeApi, { 
   SearchModsConditions as Conditions,
-  ModsSearchSortField
+  ModsSearchSortField,
+  ModLoaderType,
 } from './curseforge/CurseForgeApi';
 import {
   GM_getValue,
@@ -16,16 +20,28 @@ import {
   GameVersionType,
   GameVersionsByType
 } from './curseforge/GameVersionType';
+import SemVer from './utils/SemVer';
+import CfhModItem from './components/ModItem.vue';
 
-const modsSearchSortFieldLabels = new Map<ModsSearchSortField, string>();
-modsSearchSortFieldLabels.set(ModsSearchSortField.Featured, "特性 (Featured)");
-modsSearchSortFieldLabels.set(ModsSearchSortField.Popularity, "流行度 (Popularity)");
-modsSearchSortFieldLabels.set(ModsSearchSortField.LastUpdated, "最后更新 (LastUpdated)");
-modsSearchSortFieldLabels.set(ModsSearchSortField.Name, "名称 (Name)");
-modsSearchSortFieldLabels.set(ModsSearchSortField.Author, "作者 (Author)");
-modsSearchSortFieldLabels.set(ModsSearchSortField.TotalDownloads, "总下载量 (TotalDownloads)");
-modsSearchSortFieldLabels.set(ModsSearchSortField.Category, "分类 (Category)");
-modsSearchSortFieldLabels.set(ModsSearchSortField.GameVersion, "游戏版本 (GameVersion)");
+const modsSearchSortFieldLabels = new Map<ModsSearchSortField, string>([
+  [ModsSearchSortField.Featured, "特性 (Featured)"],
+  [ModsSearchSortField.Popularity, "流行度 (Popularity)"],
+  [ModsSearchSortField.LastUpdated, "最后更新 (LastUpdated)"],
+  [ModsSearchSortField.Name, "名称 (Name)"],
+  [ModsSearchSortField.Author, "作者 (Author)"],
+  [ModsSearchSortField.TotalDownloads, "总下载量 (TotalDownloads)"],
+  [ModsSearchSortField.Category, "分类 (Category)"],
+  [ModsSearchSortField.GameVersion, "游戏版本 (GameVersion)"]
+]);
+
+const modLoaderLabels = new Map<number, string>();
+// console.info("正在遍历ModLoaderType枚举：", ModLoaderType);
+for (let key in ModLoaderType) {
+  let num = Number(key);
+  if (!isNaN(num)) {
+    modLoaderLabels.set(num, ModLoaderType[key]);
+  }
+}
 
 interface GameVersionTypeInfo {
   id: number;
@@ -94,21 +110,31 @@ let gameVersionType = computed({
   }
 });
 
-// let versions = computed(() => {
-//   console.info("正在获取版本号...");
-//   let results: string[] = [];
-//   if (conditions.gameVersionTypeId != undefined) {
-//     let type = conditions.gameVersionTypeId;
-//     console.info("当前版本类型为", type);
-//     for (let info of gameVersionTypeInfos.value) {
-//       if (info.id == type) {
-//         results.push(...info.versions);
-//       }
-//     }
-//   }
-//   console.info(`当前版本类型下有${results.length}个版本：`, results);
-//   return results;
-// });
+let modLoaderType = computed({
+  get() {
+    if (conditions.modLoaderType != undefined) {
+      let num = conditions.modLoaderType;
+      if (num >= 0 && num <= 5) {
+        return modLoaderLabels.get(conditions.modLoaderType)
+      }
+    }
+    return ''
+  },
+  set(value) {
+    console.info("设置modLoaderType: ", value);
+    // 注意：0 == ''
+    if (value !== '') {
+      let num = Number(value);
+      if (!isNaN(num)) {
+        if (num >= 0 && num <= 5) {
+          conditions.modLoaderType = num;
+          return;
+        }
+      }
+    }
+    conditions.modLoaderType = undefined;
+  }
+});
 // #endregion
 
 // #region methods
@@ -198,7 +224,14 @@ async function loadGameVersionTypeInfos() {
   for (let type of versionsByType) {
     let versions = type.versions;
     versions.sort((v1: string, v2: string) => {
-      // TODO versions排序，注意对"-snapshot"结尾的版本进行处理
+      let sv1 = new SemVer(v1);
+      let sv2 = new SemVer(v2);
+
+      if (sv1.valid() && sv2.valid()) {
+        return -sv1.compare(sv2);
+      }
+      
+      // console.info(`非语义化版本比较：`, v1, v2);
       if (v1 > v2) {
         return 1;
       }
@@ -226,6 +259,13 @@ async function loadGameVersionTypeInfos() {
 
   typeInfos.sort((ti1: GameVersionTypeInfo, ti2: GameVersionTypeInfo) => {
     // TODO typeInfos排序，注意对"Minecraft "开头的进行处理，尤其注意"Minecraft Beta"
+    if (ti1.name.startsWith("Minecraft ") && ti2.name.startsWith("Minecraft ")) {
+      let sv1 = new SemVer(ti1.name.substring(10));
+      let sv2 = new SemVer(ti2.name.substring(10));
+      if (sv1.valid() && sv2.valid()) {
+        return -sv1.compare(sv2);
+      }
+    }
     if (ti1.name > ti2.name) {
       return 1;
     }
@@ -317,6 +357,12 @@ function search(
   if (modId != undefined) {
     // getModById
     console.info("获取MOD：", modId);
+    cfApi.getModById(modId).then((mod: Mod | null) => {
+      if (mod != null) {
+        console.info("MOD信息：", mod);
+        results.value.push(mod);
+      }
+    });
   }
   else {
     // searchMods
@@ -332,6 +378,11 @@ function search(
     } as Conditions;
 
     console.info("查询条件如下：", conds);
+
+    cfApi.searchMods(conds).then((mods) => {
+      // console.info("查询结果如下：");
+      results.value.push(...mods);
+    });
   }
 
   return new Promise(() => {
@@ -457,6 +508,31 @@ onMounted(() => {
         />
       </el-select>
     </el-row>
+
+    <el-row class="cfh-conditions-row" align="middle">
+      <span class="cfh-condition-title">模组加载器：</span>
+      <el-select 
+        v-model="modLoaderType"
+        clearable 
+        placeholder="（请选择模组加载器类型）"
+      >
+        <el-option 
+          v-for="modLoader in modLoaderLabels"
+          :value="modLoader[0]"
+        >
+          <span style="float: left;">{{ modLoader[1] }}</span>
+          <span style="float: right; color: var(--el-text-color-secondary);">{{ modLoader[0] }}</span>
+        </el-option>
+      </el-select>
+    </el-row>
+  </div>
+
+  <div>
+    <ul>
+      <div v-for="mod in results" :key=mod.id>
+        <cfh-mod-item :mod="mod" />
+      </div>
+    </ul>
   </div>
 </template>
 
@@ -469,15 +545,15 @@ onMounted(() => {
 }
 
 .cfh-conditions .el-row {
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 .cfh-conditions-row * {
-  margin-right: 10px;
+  margin-right: 12px;
 }
 
 span.cfh-condition-title {
-  width: 64px;
+  width: 75px;
 }
 </style>

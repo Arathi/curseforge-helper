@@ -1,0 +1,24 @@
+<script setup lang="ts">
+import { defineProps, PropType, computed } from 'vue';
+import moment from 'moment';
+
+let props = defineProps<{
+  date: string
+}>();
+
+const timestamp = computed(() => {
+  let t = moment(props.date);
+  return t.unix();
+});
+
+const date = computed(() => {
+  let t = moment(props.date);
+  return t.format("YYYY-MM-DD");
+});
+</script>
+
+<template>
+  <abbr class="tip standard-date standard-datetime" :data-epoch=(timestamp) time-processed="true">{{ date }}</abbr>
+</template>
+
+<style scoped></style>
