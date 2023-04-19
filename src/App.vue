@@ -18,6 +18,10 @@ import CurseForgeConfig from './config/CurseForgeConfig';
 import SemVer from './utils/SemVer';
 import CfhModItem from './components/ModItem.vue';
 import {useVersionStore, GameVersionTypeInfo} from './stores/versions';
+import { useSettingsStore } from './stores/settings';
+import TestWindow from './components/TestWindow.vue';
+
+const settings = useSettingsStore();
 
 const modsSearchSortFieldLabels = new Map<ModsSearchSortField, string>([
   [ModsSearchSortField.Featured, "特性 (Featured)"],
@@ -131,6 +135,7 @@ let modLoaderType = computed({
 // #region methods
 function onBtnSettingClick() {
   console.info("点击设置按钮");
+  settings.testWindow.show = true;
 }
 
 function onKeywordsInput(value: string) {
@@ -222,7 +227,6 @@ async function loadGameVersionTypeInfos() {
         return -sv1.compare(sv2);
       }
       
-      // console.info(`非语义化版本比较：`, v1, v2);
       if (v1 > v2) {
         return 1;
       }
@@ -402,6 +406,7 @@ onMounted(() => {
   <div class="curseforge-helper">
     <el-button type="primary" icon="Setting" @click="onBtnSettingClick" />
   </div>
+  <TestWindow />
 
   <div class="cfh-conditions">
     <el-row>

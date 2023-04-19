@@ -19,7 +19,7 @@ export default defineConfig({
         icon: 'https://vitejs.dev/logo.svg',
         namespace: 'npm/vite-plugin-monkey',
         match: [
-          'https://www.curseforge.com/minecraft/mc-mods/search*'
+          'https://legacy.curseforge.com/minecraft/mc-mods/search*'
         ],
       },
       build: {
